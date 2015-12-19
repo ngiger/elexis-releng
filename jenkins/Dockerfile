@@ -16,7 +16,14 @@ RUN git config --global user.email "Jenkins@`hostname -f`"
 
 ADD plugins.sh /usr/local/bin/plugins.sh
 RUN /usr/local/bin/plugins.sh      /usr/share/jenkins/ref/plugins.txt
+
+# Need to install mysql and postgres client to run DB tests
+RUN apt-get install -y postgresql-client-9.4 mysql-client-5.5
+# Some logical links for backward compatibility
 RUN ln -s /var/jenkins_home /home/jenkins
+RUN ln -s /var/jenkins_home/userContent /home/jenkins/downloads
+RUN mkdir /srv/www
+RUN ln -s /var/jenkins_home/userContent /srv/www/downloads
 
 # drop back to the regular jenkins user - good practice
 USER jenkins

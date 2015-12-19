@@ -1,0 +1,123 @@
+// Copyright (c) 2015 by Niklaus Giger niklaus.giger@member.fsf.org
+//
+// All rights reserved. This program and the accompanying materials
+// are made available under the terms of the Eclipse Public License v1.0
+// which accompanies this distribution, and is available at
+// http://www.eclipse.org/legal/epl-v10.html
+//
+// This file builds releases for Medelexis 3.1 and later
+node {
+
+  // Fill some variables
+  def valid_submitters = 'jkappis'
+  def git_app = "git@mis.medelexis.ch:/srv/web/gitext.medelexis.ch" // to debug patch it local repository
+  def git_med3 = "git@mis.medelexis.ch:/srv/web/git.medelexis.ch"
+
+  def mvnHome = tool 'M3'
+  env.mvnHome = "${mvnHome}"
+  env.downloads = '/var/jenkins_home/userContent'  // TODO:
+
+  if (
+        ("${BRANCH_2_BUILD}" =~ '.*release.*' && "${VARIANT} " =~ '.*snapshot.*') ||
+        ("${BRANCH_2_BUILD}" =~ '.*master.*'  && "${VARIANT} " =~ '.*release.*')
+    )  {
+    sh "echo 'Invalid combination of VARIANT snapshot with branch $BRANCH_2_BUILD containing release' && exit 1"
+  }
+
+  wrap([$class: 'TimestamperBuildWrapper']) {
+
+    deleteDir() // Start from fresh directory
+    checkout scm // populate the workspace with our scripts
+    run_limit_acces('limit')
+
+    build_one_project("medelexis-3-application", "${git_app}/medelexis-3-application.git");
+    build_one_project("medelexis-3", "${git_med3}/medelexis-3.git");
+
+    def tests_okay = build_jubula()
+
+    input message: "${tests_okay}\nSoll branch ${BRANCH_2_BUILD} jetzt freigeben werden?" // , submitter: valid_submitters
+    run_limit_acces('unblock')
+  }
+}
+
+def build_one_project(project_name, project_url)  {
+  echo "Calling groovy $project_name with BRANCH_NAME/VARIANT ${BRANCH_2_BUILD}/${VARIANT} using withEnv"
+  withEnv(["BRANCH_NAME=${BRANCH_2_BUILD}",
+           "VARIANT=${VARIANT}",]) {
+    dir(project_name) {
+      deleteDir()
+      git  branch: "${BRANCH_2_BUILD}",  url: project_url
+      // TODO: patch target definition to reference built p2 sites, not the official ones
+      load 'build.groovy'
+    }
+  }
+}
+
+def build_jubula() {
+  def tests_okay = "Jubula GUI-Tests liefen noch nicht durch"
+  return tests_okay;
+  // Checkout Jubula GUI-Tests and run maven tests in a sub-directory
+  checkout([$class: 'GitSCM', branches: [[name: '*/master']],
+           doGenerateSubmoduleConfigurations: false,
+           extensions: [[$class: 'RelativeTargetDirectory',
+           relativeTargetDir: 'jubula']],
+           submoduleCfg: [],
+           userRemoteConfigs: [[url: "git://ng-tr/git/elexis-jubula.git"]]])
+  try {
+      sh "cd jubula; ${env.mvnHome}/bin/mvn --batch-mode clean install"
+      tests_okay = "Jubula GUI-Tests in Ordnung!"
+      writeFile(file: "jubula/results/PASSED", text: "${tests_okay}")
+  } catch (error) {
+      tests_okay = "Jubula GUI-Tests schlugen fehl!"
+      writeFile(file: "jubula/results/FAILURE", text: "${tests_okay}")
+  }
+
+  step([$class:  'ArtifactArchiver',
+      artifacts: "jubula/results/**",
+      fingerprint: true])
+  return tests_okay;
+}
+
+def build_jubula() {
+  def tests_okay = "Jubula GUI-Tests liefen noch nicht durch"
+  return tests_okay;
+
+  // Checkout Jubula GUI-Tests and run maven tests in a sub-directory
+  checkout([$class: 'GitSCM', branches: [[name: '*/master']],
+           doGenerateSubmoduleConfigurations: false,
+           extensions: [[$class: 'RelativeTargetDirectory',
+           relativeTargetDir: 'jubula']],
+           submoduleCfg: [],
+           userRemoteConfigs: [[url: "git://ng-tr/git/elexis-jubula.git"]]])
+
+  // TODO: Install produced Elexis into work subdir and patch config.ini (Using rake task?)
+  // TODO: Install autagent (mvn or rake target?)
+    wrap([$class: 'Xvfb']) {
+    try {
+        sh "cd jubula; ${env.mvnHome}/bin/mvn --batch-mode clean install" }
+        tests_okay = "Jubula GUI-Tests in Ordnung!"
+        writeFile(file: "jubula/results/PASSED", text: "${tests_okay}")
+    } catch (error) {
+        tests_okay = "Jubula GUI-Tests schlugen fehl!"
+        writeFile(file: "jubula/results/FAILURE", text: "${tests_okay}")
+    }
+  }
+
+  step([$class:  'ArtifactArchiver',
+      artifacts: "jubula/results/**",
+      fingerprint: true])
+  return tests_okay;
+}
+
+def run_limit_acces(access) {
+  env.ACTION = access
+  try {
+    env.LIMIT_IPS = "$LIMIT_IPS"
+  } catch(error) {
+    env.LIMIT_IPS = "no IPS to limit"
+  }
+  env.VARIANT = "$VARIANT"
+  sh "pwd; ls -l limit_access"
+  sh "./limit_access"
+}
+

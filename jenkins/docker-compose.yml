@@ -1,9 +1,63 @@
+# Copyright (c) 2015 by Niklaus Giger niklaus.giger@member.fsf.org
+#
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Eclipse Public License v1.0
+# which accompanies this distribution, and is available at
+# http:#www.eclipse.org/legal/epl-v10.html
+#
+# This is a setup for running tests
+# Security is not really a concern!
+#
+
+MysqlData:
+  image: mysql:5.5
+  entrypoint: /bin/bash
+
+mysqlTest:
+  image: mysql:5.5
+  hostname: mysqlTest
+  volumes_from:
+    - MysqlData
+  environment:
+    MYSQL_DATABASE: unittests
+    MYSQL_USER: elexis
+    MYSQL_PASSWORD: elexisTest
+    MYSQL_ROOT_PASSWORD: elexisTest
+
+PostgresqlData:
+  image: postgres:9.4
+  entrypoint: /bin/bash
+
+postgresTest:
+  image: postgres:9.4
+  volumes_from:
+    - PostgresqlData
+  environment:
+    POSTGRES_USER: elexis
+    POSTGRES_PASSWORD: elexisTest
+    POSTGRES_DB: unittests
+
+
 jenkinstest:
   build: .
   volumes:
     - /home/docker-data-containers/jenkins-test:/var/jenkins_home
   ports:
     - "8081:8080"
+  links:
+    - postgresTest
+    - mysqlTest
+  environment:
+    PGHOST: postgresTest
+    PGUSER: elexis
+    PGPASSWORD: elexisTest
+    PGDATABASE: unittests
+    MYSQL_HOST: mysqlTest
+    MYSQL_PWD: elexisTest
+    MYSQL_DATABASE: unittests
+    MYSQL_USER: elexis
+    MYSQL_PASSWORD: elexisTest
+    MYSQL_ROOT_PASSWORD: elexisTest
 
 jenkins:
   build: .

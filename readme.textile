@@ -32,7 +32,11 @@ Had to change name jenkins-test -> jenkinstest, as the older docker-compose did 
 * Change on srv.elexis.info to bring up Jenkins
 * Copied /home/jenkins/config.xml and credentials to /home/docker-data-containers/jenkins-test to get the same users.
 * Added jenkins.elexis.info to /etc/nginx/sites-enabled
-* Set STMP server to 172.17.42.1 in https://jenkins.elexis.info/configure
+* Went to configure of the Jenkins
+** Did set "Jenkins URL" to the one configured via NGINX
+** Set "STMP server" to IP of host
+** "Maven Installations.."  Choose 3.0.5 as tool M3
+** "Add Xvfb Installation". Name "xvfb", everything else defaults.
 
 h3. local development (from stretch/testing and https://apt.dockerproject.org/repo)
 
