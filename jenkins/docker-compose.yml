@@ -1,6 +1,4 @@
-
-
-jenkins-test:
+jenkinstest:
   build: .
   volumes:
     - /home/docker-data-containers/jenkins-test:/var/jenkins_home

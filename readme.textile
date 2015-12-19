@@ -27,6 +27,13 @@ OpenSSL version: OpenSSL 1.0.1e 11 Feb 2013
 which docker-compose
 /usr/local/bin/docker-compose
 
+Had to change name jenkins-test -> jenkinstest, as the older docker-compose did not accept a '-' in the name.
+
+* Change on srv.elexis.info to bring up Jenkins
+* Copied /home/jenkins/config.xml and credentials to /home/docker-data-containers/jenkins-test to get the same users.
+* Added jenkins.elexis.info to /etc/nginx/sites-enabled
+* Set STMP server to 172.17.42.1 in https://jenkins.elexis.info/configure
+
 h3. local development (from stretch/testing and https://apt.dockerproject.org/repo)
 
 bc.ii  docker-compose             1.5.2-1        all          Punctual, lightweight development environments using Docker

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+echo Action: ${ACTION} to variant ${VARIANT}
+echo Limit: ${LIMIT_IPS}
+
+HTACFILE=/srv/web/download.medelexis.ch/${VARIANT}/.htaccess
+if ! [ -e $HTACFILE ]
+then
+  echo Could not find HTACFILE $HTACFILE
+  exit 0
+fi
+
+if [ "${ACTION}" = "block" ]
+then
+  echo "Deny from all" > ${HTACFILE}
+elif [ "${ACTION}" = "limit" ]
+then
+  echo "Order Allow,Deny" > ${HTACFILE}
+  arr=$(echo ${LIMIT_IPS} | tr "," "\n")
+
+  for x in $arr
+  do
+      echo "Allow from $x" >> ${HTACFILE}
+  done
+else
+  rm ${HTACFILE}
+fi
+
