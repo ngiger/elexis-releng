@@ -1,0 +1,15 @@
+
+
+jenkins-test:
+  build: .
+  volumes:
+    - /home/docker-data-containers/jenkins-test:/var/jenkins_home
+  ports:
+    - "8081:8080"
+
+jenkins:
+  build: .
+  volumes:
+    - /home/docker-data-containers/jenkins:/var/jenkins_home
+  ports:
+    - "8080:8080"

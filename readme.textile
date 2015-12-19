@@ -1,0 +1,152 @@
+h1. Elexis::Releng
+
+This is small ruby program, to support work around the (Med-)Elexis release process.
+
+Its purpose is:
+* Simplify the building all variants (snapshot, beta, prerelease, release) for the OpenSource Elexis and the proprietary Medelexis derivative
+* Easy setup of a complete build infrastructure on a developer machine
+* Tests to ensure that builded products meet our requirements, e.g.
+** the version prefix (e.g. a for snapshot)
+** Automated GUI (Jubula) and manual test are run before releasing
+** Interactive Go/NoGo decision by a authorized human person
+
+Seee also elexis_3_release.gv/pdf in ch.elexis.core.p2site!
+
+h2. Installation
+
+h3. on srv.elexis.info
+
+Docker on jessie (srv.elexis.info). docker-compose installed from source via Puppet module 'garystafford/docker_compose', as 'garethr/docker' does not yet support docker-compose.
+
+bc. ii  docker.io                  1.6.2~dfsg1-1~bpo8+1 amd64        Linux container runtime
+ii  vim-syntax-docker          1.6.2~dfsg1-1~bpo8+1 all          Docker container engine - Vim highlighting syntax files
+docker-compose --version
+docker-compose version: 1.3.1
+CPython version: 2.7.9
+OpenSSL version: OpenSSL 1.0.1e 11 Feb 2013
+which docker-compose
+/usr/local/bin/docker-compose
+
+h3. local development (from stretch/testing and https://apt.dockerproject.org/repo)
+
+bc.ii  docker-compose             1.5.2-1        all          Punctual, lightweight development environments using Docker
+ii  docker.io                  1.8.3~ds1-2    amd64        Linux container runtime
+ii  python-docker              1.5.0-1        all          Python wrapper to access docker.io's control socket
+ii  python-dockerpty           0.3.4-1        all          Pseudo-tty handler for docker Python client (Python 2.x)
+
+Also installed git-daemon-sysvinit, called @./config_daemon@ to publish all affected modules
+Did set @GIT_DAEMON_ENABLE=true@ in @/etc/default/git-daemon@
+Add this line to your application's Gemfile:
+
+Ran @cd jenkins && docker-compose@. Image is big (1 GB). After running the  tests /home/docker-data-containers/jenkins/ is another 3 GB.
+
+h3. setup of Jenkins-CI as docker
+
+Done with @cd jenkins && docker-compose build && docker-compose up jenkins-test@. Then the URL localhost:8081 should show a Jenkins-CI.
+
+There are helper scripts (add_configs and get_configs) which allow copying/restoring the test jobs from the Jenkins.
+
+Another helper patch_config_copies accepts a parameter which must be local or official.
+* passing local to it will replace all git URL inside config/jobs/*/config.xml  git://<hostname>/git/<project>
+* passing offial to it will replace all git URL inside config/jobs/*/config.xml  git://<official-host>/git/<project>, where the offical host is elexis.info, or the medelexis
+
+
+h2. Usage
+
+The main Jenkinsfile here can be used as a Workflow from SCM and expects the following options
+* BRANCH_2_BUILD (choice, default master)
+* VARIANT (choice, default snapshot)
+* RUN_MIRROR_4_ELEXIS (boolean, defaults to false)
+* RUN_ELEXIS_3rd_PARTIES (boolean, defaults to false)
+* LIMIT_IPS (String, default 77.119.228.135,194.208.16.210). Limits acces
+
+Running a job with Jenkinsfile will
+* Abort if you want to build a VARIANT release or prerelease based on a branch not containing release in its name
+* block normal access to VARIANT
+* build BRANCH_2_BUILD of elexis.3rdparty.libraries if RUN_ELEXIS_3rd_PARTIES is true
+* build BRANCH_2_BUILD of mirror.4.elexis if RUN_MIRROR_4_ELEXIS is true
+* for each of the project_name elexis-3-core, elexis-3-base, medelexis-3-application, medelexis-3
+** skip if no project branches/<project_name> is defined (to avoid running medelexis on srv.elexis.info)
+** call a project_build procedure, which runs by default calls
+*** git checkout
+*** mvn clean install
+*** archives results and *p2site/target
+*** if parameter init_script given, will call it after the git checkout (needed for medelexis-3-application)
+*** if parameter post_script given, will run it after archiving, e.g. install_build.rb
+*** the mvn target/and  opts may be overridden by passing mvn_param
+** run automated GUI tests
+** send an E-Mail to some well known addresses (Does not work at the moment)
+** Ask for PROCEED/ABORT, accepting input only from some well known users (at the moment)
+* redirect VARIANT to new installation dir # in case of an abort somebody must revert all link
+* allow normal access to VARIANT
+
+h3. pending changes
+
+* I would like to use the groovy-script/workflow writeFile to create the p2.inf and repo.properties files. This would make the pom.xml simpler.
+** What does this means for build on a developer machine?
+** Does it create the same files in multibranch and workflow plugins?
+* Also consider moving the calculation of the timestamp_format into the build.groovy
+** What does this means for build on a developer machine?
+** Does it create the same files in multibranch and workflow plugins?
+
+h3. Accepted script approvals (URL/scriptApproval/)
+
+bc. method groovy.lang.GString plus java.lang.String
+method groovy.lang.GroovyObject invokeMethod java.lang.String java.lang.Object
+method java.io.File toPath
+method java.io.PrintStream println java.lang.String
+method java.nio.file.Path getFileName
+new java.io.File java.lang.String
+new java.util.ArrayList
+staticField java.lang.System err
+staticField java.lang.System out
+staticMethod java.lang.System getProperty java.lang.String
+staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods execute java.lang.String
+staticMethod org.codehaus.groovy.runtime.ScriptBytecodeAdapter createRange java.lang.Object java.lang.Object boolean
+
+h3. Debugging Jenkins-Workflow
+
+I opened bug https://issues.jenkins-ci.org/browse/JENKINS-32146. I only found this problem, because I found <result>FAILURE</result> which were not marked RED in the workflow steps.
+
+h3. Requirements for each project
+
+In order to be support multiple branche (e.g. new feature branches), we need @Jenkinsfile@ in which should look like this
+
+bc. // see http://jenkins-ci.org/content/pipeline-code-multibranch-workflows-jenkins
+node {
+   // Mark the code checkout 'stage'....
+   stage 'Checkout'
+   // Checkout code from repository
+   checkout scm
+   // Get the maven tool.
+   // ** NOTE: This 'M3' maven tool must be configured
+   // **       in the global configuration.
+   def mvnHome = tool 'M3'
+   // Mark the code build 'stage'....
+   stage 'Build'
+   // Run the maven build
+   // sh "${mvnHome}/bin/mvn clean install  -Dmaven.test.skip=true"
+   load 'build.groovy'
+}
+
+The actual build is done in a Groovy script @build.groovy@, to enable to us call it from a workflow. For elexis-3-core it would look like this
+
+bc. #!/usr/bin/env groovy
+"which mvn".execute().waitForProcessOutput(System.out, System.err)
+"mvn --version".execute().waitForProcessOutput(System.out, System.err)
+proc1 =  "mvn clean install".execute()
+proc1.waitForProcessOutput(System.out, System.err)
+System.exit(proc1.exitValue())
+
+It is a little more complex than just seeing @mvn clean install@, but I found no other way in order to capture stdout/stderr and returning the correct exit code.
+
+h2. Development
+
+After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+
+To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+
+h2. Contributing
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/ngiger/elexis-releng.
+

@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+docker_home = '/home/docker-data-containers/jenkins-test'
+
+jobs_configs = Dir.glob("#{docker_home}/jobs/*/config.xml")
+puts jobs_configs
+
+jobs_configs.each do |job|
+  dest = File.join(Dir.pwd, 'config', 'jobs', File.basename(File.dirname(job)))
+  FileUtils.makedirs(dest)
+  FileUtils.cp(job, dest, :verbose => true)
+end

@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1.12">
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>VARIANT</name>
+          <description>Welche Variante</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>snapshot</string>
+              <string>beta</string>
+              <string>prerelease</string>
+              <string>release</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>BRANCH</name>
+          <description>Welchen Branch</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>master</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@1.12">
+    <script>node(&apos;master&apos;) {
+    def mvnHome = tool &apos;M3&apos;
+    // mail subject: &apos;all well&apos;, to: &apos;niklaus.giger@hispeed.ch&apos;, body: &apos;All well.&apos;
+
+    // build &quot;elexis-3-core/$BRANCH&quot;
+    git url: &apos;git://ng-tr/git/elexis-3-core.git&apos;
+    def build_file = &apos;build.groovy&apos;
+    fileExists  build_file
+    sh &quot;ls -l $build_file&quot;
+    // my_mail(readFile(&apos;Jenkinsfile&apos;))
+    echo &quot;before loading $build_file&quot;
+    try {
+        build = load &quot;$build_file&quot;
+        echo &quot;Nach load  $build_file&quot;
+        build.beforeStep()
+        echo &quot;Nach beforeStep  $build_file&quot;
+        build.afterStep()
+        echo &quot;Nach afterStep  $build_file&quot;
+        
+    } catch(error) {
+        echo &quot;Error loading $build_file. Error was&quot;
+        echo &quot;$error&quot;
+    }
+    echo &quot;Nachher&quot;
+
+    // sh &quot;${mvnHome}/bin/mvn --batch-mode clean install -Dmaven.test.skip=true&quot;
+    // load &apos;Jenkinsfile&apos; // Meckert mit inappropriate context
+    load &apos;build.groovy&apos;
+
+    step([$class:  &apos;ArtifactArchiver&apos;,
+        artifacts: &apos;*.p2site/target/repository/**,*.p2site/target/products/*.zip&apos;,
+        fingerprint: true])
+
+    // build &quot;elexis-3-base/$BRANCH&quot;
+    git url: &apos;git://ng-tr/git/elexis-3-base.git&apos;
+    sh &quot;${mvnHome}/bin/mvn --batch-mode clean install&quot;
+
+    step([$class:  &apos;ArtifactArchiver&apos;,
+        artifacts: &apos;*.p2site/target/repository/**,*.p2site/target/products/*.zip&apos;,
+        fingerprint: true])
+
+    git url: &apos;git://ng-tr/git/elexis-jubula.git&apos;
+    def tests_okay = &quot;Not yet run&quot;
+    try {
+        sh &quot;${mvnHome}/bin/mvn --batch-mode clean install&quot;
+        tests_okay = &quot;Jubula GUI-Tests in Ordnung!&quot;
+    } catch (error) {
+        tests_okay = &quot;Jubula GUI-Tests schlugen fehl!&quot;
+    }
+
+    step([$class:  &apos;ArtifactArchiver&apos;,
+        artifacts: &apos;results/**&apos;,
+        fingerprint: true])
+
+    input message: &quot;$tests_okay. \n Branch $BRANCH freigeben?&quot;  
+    //, submitter: &apos;anonymous ngiger jkappis&apos;
+    // sh &quot;pwd&quot;
+}
+@NonCPS
+def my_mail(text) {
+   mail bcc: &apos;&apos;, 
+        body: &quot;text ist $text&quot;, 
+        cc: &apos;&apos;, charset: &apos;&apos;, from: &apos;&apos;, mimeType: &apos;&apos;, replyTo: &apos;&apos;, 
+        subject: &apos;test-workflow&apos;, 
+        to: &apos;niklaus.giger@hispeed.ch&apos;}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+</flow-definition>

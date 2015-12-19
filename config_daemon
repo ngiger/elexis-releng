@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+gits = Dir.glob('/opt/elexis-3/*/.git')+
+    Dir.glob(Dir.pwd + '/.git') +
+    Dir.glob('/opt/src/elexis-jubula/.git')
+puts gits
+
+gits.each do |git|
+  dest = "/var/lib/git/#{File.basename(File.dirname(git))}.git"
+  puts "ln -s #{git} -> #{dest}"
+  FileUtils.ln_s(git, dest) unless File.exist?(dest)
+  ok = "#{git}/git-daemon-export-ok"
+  system("touch #{ok}")
+  raise "file #{ok} not found" unless File.exist?(ok)
+end
+# ln -s ~daniel/git/foo/.git /var/lib/git/foo.git

@@ -1,0 +1,4 @@
+h1. A Docker container for running jenkins
+
+This is a slightly modified copy of https://github.com/jenkinsci/docker to the needs of srv.elexis.info
+

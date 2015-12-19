@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+require 'socket'
+
+
+jobs_configs = Dir.glob("#{Dir.pwd}/config/jobs/*/config.xml")
+
+hostname = Socket.gethostname
+jobs_configs.each do |job|
+  inhalt = IO.read(job)
+  remote = /<remote>git:\/\/(#{hostname})\/git\/(.+)<\/remote>/.match(inhalt)
+  next unless remote
+  #puts inhalt
+  #require 'pry'; binding.pry
+  case remote[2]
+  when /medelexis.*application/i
+    puts "job #{remote[2]} #{job} is Medelexis Appliation"
+  when /medelexis.*/i
+    puts "job #{remote[2]} #{job} is Medelexis"
+  else
+    puts "job #{remote[2]} #{job} is OpenSource"
+    # inhalt2 = inhalt.sub("git://#{hostname}", 'git@github.com:elexis')
+  end
+#  dest = File.join(Dir.pwd, 'config', 'jobs', File.basename(File.dirname(job)))
+#  FileUtils.makedirs(dest)
+#  FileUtils.cp(job, dest, :verbose => true)
+end
