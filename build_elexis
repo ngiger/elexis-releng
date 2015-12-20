@@ -10,6 +10,7 @@
 node {
   // Fill some variables
   def valid_submitters = 'ngiger'
+  def ng_prefix = "https://github.com/ngiger" // debug with git_prefix = "git://ng-tr/git"
   def git_prefix = "https://github.com/elexis" // debug with git_prefix = "git://ng-tr/git"
   def mvnHome = tool 'M3'
   env.mvnHome = "${mvnHome}"
@@ -65,20 +66,20 @@ def build_jubula() {
            extensions: [[$class: 'RelativeTargetDirectory',
            relativeTargetDir: 'jubula']],
            submoduleCfg: [],
-           userRemoteConfigs: [[url: "git://ng-tr/git/elexis-jubula.git"]]])
+           userRemoteConfigs: [[url: "${ng_prefix}/elexis-jubula.git"]]])
 
   // TODO: Install produced Elexis into work subdir and patch config.ini (Using rake task?)
   // TODO: Install autagent (mvn or rake target?)
     wrap([$class: 'Xvfb']) {
-    try {
-        sh "cd jubula; ${env.mvnHome}/bin/mvn --batch-mode clean install" }
-        tests_okay = "Jubula GUI-Tests in Ordnung!"
-        writeFile(file: "jubula/results/PASSED", text: "${tests_okay}")
-    } catch (error) {
-        tests_okay = "Jubula GUI-Tests schlugen fehl!"
-        writeFile(file: "jubula/results/FAILURE", text: "${tests_okay}")
+      try {
+          sh "cd jubula; ${env.mvnHome}/bin/mvn --batch-mode clean install"
+          tests_okay = "Jubula GUI-Tests in Ordnung!"
+          writeFile(file: "jubula/results/PASSED", text: "${tests_okay}")
+      } catch (error) {
+          tests_okay = "Jubula GUI-Tests schlugen fehl!"
+          writeFile(file: "jubula/results/FAILURE", text: "${tests_okay}")
+      }
     }
-  }
 
   step([$class:  'ArtifactArchiver',
       artifacts: "jubula/results/**",
