@@ -37,6 +37,12 @@ postgresTest:
     POSTGRES_PASSWORD: elexisTest
     POSTGRES_DB: unittests
 
+jenkinsSlave:
+  image: evarga/jenkins-slave:latest
+  environment:
+    DOCKER_OPTS: "-H tcp://0.0.0.0:4243 -H unix:///var/run/docker.sock"
+  ports:
+    - "9022:22"
 
 jenkinstest:
   build: .
@@ -47,7 +53,9 @@ jenkinstest:
   links:
     - postgresTest
     - mysqlTest
+    - jenkinsSlave
   environment:
+    DOCKER_OPTS: "-H tcp://0.0.0.0:4243 -H unix:///var/run/docker.sock"
     PGHOST: postgresTest
     PGUSER: elexis
     PGPASSWORD: elexisTest

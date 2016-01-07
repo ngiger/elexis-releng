@@ -27,5 +27,7 @@ RUN ln -s /var/jenkins_home/userContent /srv/www/downloads
 
 # drop back to the regular jenkins user - good practice
 USER jenkins
+RUN mkdir /var/jenkins_home/.ssh
+COPY jenkins.pub jenkins /var/jenkins_home/.ssh/
 # s.a. https://jenkins.elexis.info/jenkins/systemInfo für plugins-versionen
 
