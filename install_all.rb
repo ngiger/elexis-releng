@@ -9,14 +9,20 @@ root = File.expand_path(File.dirname(__FILE__))
 require File.join(root, 'repos')
 system("gem install zip-zip") unless `gem list | grep zip-zip`
 Timestamp = Time.new.strftime('%Y.%m.%d-%H.%M.%S')
-
+puts "#{__FILE__} with VARIANT #{ENV['VARIANT']}"
 def patch_repositories
   (Dir.glob("*/*.target")+Dir.glob('pom.xml')+Dir.glob('*p2site/update_mirror.xml')).each do |target|
     puts target
     system("git checkout #{target}")
     # replace ALL instances in a line
-    exit 1 unless system("awk -i inplace '{gsub(/http:\\/\\/download.elexis.info/, \"file:///srv/download.elexis.info\")}; 1' #{target}")
-    exit 1 unless system("awk -i inplace '{gsub(/https:\\/\\/download.medelexis.ch/, \"file:///srv/web/download.medelexis.ch\")}; 1' #{target}")
+    content = IO.read(target)
+    File.open(target, 'w+') do |file|
+      # Don't replace mirror 4 elexis and elexis 3rd party libraries as, these are frozen for the time (January 2015) being!
+      content.gsub!(/http:\/\/download.elexis.info\/elexis.3.core/, 'file:///srv/download.elexis.info/elexis.3.core')
+      content.gsub!(/http:\/\/download.elexis.info\/elexis.3.base/, 'file:///srv/download.elexis.info/elexis.3.base')
+      content.gsub!(/https:\/\/download.medelexis.ch/, "file:///srv/web/download.medelexis.ch")
+      file.write content
+    end
     system("git diff #{target}")
   end
 end
@@ -36,7 +42,6 @@ Repos.each do |repo|
   end
   # next if repo.index('/elexis-3-') # skip elexis-3-core and -base
   # next unless /medelexis-3$/.match(dir) # skip elexis-3-core and -base
-  patch_repositories
   case repo
     when /3rdparty/
       src = '/srv/download.elexis.info/elexis.3rdparty.libraries'
@@ -50,7 +55,8 @@ Repos.each do |repo|
     else
       cmd = "mvn clean install"
   end
-  cmd += " -Dtycho.localArtifacts=ignore 2>&1 | tee maven-#{Timestamp}.log"
+  patch_repositories
+  cmd += " -Dtycho.localArtifacts=ignore #{ENV['VARIANT'] ? '-Drepo_variant='+ENV['VARIANT'] : ''} 2>&1 | tee maven-#{Timestamp}.log"
   puts cmd
   unless system(cmd)
     puts "Running #{cmd} failed!"
