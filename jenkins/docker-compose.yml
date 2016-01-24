@@ -46,6 +46,8 @@ jenkinsSlave:
 
 jenkinstest:
   build: .
+  # The jenkins docer requires a user with UID 1000
+  user: '1000'
   volumes:
     - /home/docker-data-containers/jenkins-test:/var/jenkins_home
   ports:
@@ -69,6 +71,8 @@ jenkinstest:
 
 jenkins:
   build: .
+  # The jenkins docer requires a user with UID 1000
+  user: '1000'
   volumes:
     - /home/docker-data-containers/jenkins:/var/jenkins_home
   ports:

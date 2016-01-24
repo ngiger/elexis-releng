@@ -28,6 +28,9 @@ RUN ln -s /var/jenkins_home/userContent /srv/www/downloads
 # drop back to the regular jenkins user - good practice
 USER jenkins
 RUN mkdir /var/jenkins_home/.ssh
+# You must manually copy your ssh-keys to directory where the Dockerfile is placed e.g
+# cp /home/jenkins/.ssh/id_rsa /home/jenkins/.ssh/id_rsa.pub .
+# TODO: Howto better handle this secret?
 COPY jenkins.pub jenkins /var/jenkins_home/.ssh/
 # s.a. https://jenkins.elexis.info/jenkins/systemInfo für plugins-versionen
 
