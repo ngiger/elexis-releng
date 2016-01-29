@@ -44,14 +44,14 @@ jenkinsSlave:
   ports:
     - "9022:22"
 
-jenkins:
+jenkinstest:
   build: .
   # The jenkins docer requires a user with UID 1000
   user: '1000'
   volumes:
-    - /home/docker-data-containers/jenkins:/var/jenkins_home
+    - /home/docker-data-containers/jenkins-test:/var/jenkins_home
   ports:
-    - "8080:8080"
+    - "8081:8080"
   links:
     - postgresTest
     - mysqlTest
@@ -68,4 +68,3 @@ jenkins:
     MYSQL_USER: elexis
     MYSQL_PASSWORD: elexisTest
     MYSQL_ROOT_PASSWORD: elexisTest
-
