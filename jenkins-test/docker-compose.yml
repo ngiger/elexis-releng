@@ -45,7 +45,7 @@ jenkinsSlave:
     - "9022:22"
 
 jenkinstest:
-  build: .
+  build: ../jenkins
   # The jenkins docer requires a user with UID 1000
   user: '1000'
   volumes:
